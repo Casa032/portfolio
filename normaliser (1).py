@@ -54,6 +54,8 @@ def extrait_sections(text: str) -> str | None:
 def parse_date(date: str) -> str | None:
     if not date:
         return None
+    if not isinstance(date, str):
+        date = str(date)
     try:
         return parsedate_to_datetime(date).strftime("%m/%d/%Y")
     except Exception:
@@ -65,6 +67,27 @@ def parse_date(date: str) -> str | None:
         except ValueError:
             continue
     return None
+
+
+def _texte(valeur) -> str | None:
+    """ Garantit une valeur stockable par SQLite : str ou None.
+
+    Les flux RSS/API renvoient parfois des listes, dicts ou objets
+    (ex. plusieurs auteurs, détails de langue). On les ramène à une chaîne.
+    """
+    if valeur is None:
+        return None
+    if isinstance(valeur, str):
+        return valeur.strip() or None
+    if isinstance(valeur, (list, tuple, set)):
+        return ", ".join(_texte(v) or "" for v in valeur).strip(", ") or None
+    if isinstance(valeur, dict):
+        # cas feedparser : on tente les clés usuelles, sinon repr
+        for cle in ("name", "value", "language", "term"):
+            if cle in valeur:
+                return _texte(valeur[cle])
+        return None
+    return str(valeur)
 
 
 def normaliser(brut: dict, source_id: str) -> dict:
@@ -84,12 +107,12 @@ def normaliser(brut: dict, source_id: str) -> dict:
     return {
         "id": comp_id(url),
         "source_id": source_id,
-        "auteur": brut.get("auteur"),
+        "auteur": _texte(brut.get("auteur")),
         "date_publication": parse_date(brut.get("date")),
-        "langue": brut.get("langue"),
-        "titre": (brut.get("titre") or "Sans titre").strip(),
+        "langue": _texte(brut.get("langue")),
+        "titre": (_texte(brut.get("titre")) or "Sans titre"),
         "resume": extrait_sections(
-            nettoyer_html(brut.get("resume")) or "Pas de résumé disponible"
+            nettoyer_html(_texte(brut.get("resume")) or "") or "Pas de résumé disponible"
         ),
         "url": url,
         "created_at": datetime.now().strftime('%Y/%m/%d')
