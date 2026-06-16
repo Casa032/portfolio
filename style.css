@@ -1,3 +1,44 @@
+import time
+
+def fetch_eurlex_batch(source, mapping, requests_list, headers=None, delay=7):
+    """
+    requests_list : liste de dicts de params, un par appel.
+    Espace chaque appel pour respecter la limite de 10 req/min.
+    """
+    url_api = source.get("url_api")
+    all_articles = []
+
+    for i, params in enumerate(requests_list):
+        resp = requests.get(url_api, params=params, headers=headers or {}, timeout=15)
+
+        if resp.status_code == 429:
+            retry_after = int(resp.headers.get("Retry-After", delay))
+            print(f"  [{source['id']}] Rate limited (appel {i+1}), attente {retry_after}s...")
+            time.sleep(retry_after)
+            resp = requests.get(url_api, params=params, headers=headers or {}, timeout=15)
+
+        resp.raise_for_status()
+        data = resp.json()
+        items = data if isinstance(data, list) else data.get("items") or data.get("results") or []
+
+        for item in items:
+            raw = {
+                "url":     item.get(mapping.get("url", "url")),
+                "titre":   item.get(mapping.get("titre", "title")),
+                "date":    item.get(mapping.get("date", "date")),
+                "contenu": item.get(mapping.get("contenu", "content")),
+            }
+            try:
+                all_articles.append(normalize_article(raw, source["id"]))
+            except ValueError:
+                continue
+
+        if i < len(requests_list) - 1:  # pas de sleep après le dernier
+            time.sleep(delay)
+
+    print(f"  [{source['id']}] EUR-Lex → {len(all_articles)} articles récupérés")
+    return all_articles
+
 
 body {
     font-family: Arial, sans-serif;
