@@ -1,4 +1,45 @@
-"""
+from pptx.dml.color import RGBColor
+
+def remplir_sommaire(slide, articles, slides_articles, prs):
+    """ Remplit le sommaire ET crée les liens cliquables vers chaque article. """
+    contenu = _shape_by_name(slide, "Espace réservé du contenu 4")
+    if not contenu:
+        return
+    tf = contenu.text_frame
+    modele = tf.paragraphs[0]
+    style_run = modele.runs[0] if modele.runs else None
+
+    for p in tf.paragraphs[1:]:
+        p._p.getparent().remove(p._p)
+
+    if not articles:
+        if style_run:
+            style_run.text = "—"
+        return
+
+    def _style_lien(run):
+        # police / couleur des liens du sommaire — à ajuster ici
+        run.font.color.rgb = RGBColor(0x00, 0x00, 0x00)  # ex. noir
+        run.font.underline = False
+        # run.font.name = "Calibri"
+        # run.font.size = Pt(14)
+        # run.font.bold = False
+
+    # 1ère ligne : réutilise le paragraphe modèle
+    if style_run:
+        style_run.text = articles[0].get("titre", "")[:90]
+        _lien_vers_slide(style_run, slides_articles[0], prs)
+        _style_lien(style_run)
+
+    # lignes suivantes
+    for art, sl in zip(articles[1:], slides_articles[1:]):
+        p = tf.add_paragraph()
+        r = p.add_run()
+        r.text = art.get("titre", "")[:90]
+        _lien_vers_slide(r, sl, prs)
+        _style_lien(r)
+      
+  """
 generer_rapport_template.py — Remplit le template Cofidis avec les articles de la base.
 
 Structure du template (11 slides) :
