@@ -1,3 +1,25 @@
+def _traiter_articles(articles, libelle):
+    print(f"{len(articles)} articles à {libelle}")
+    for i, article in enumerate(articles, 1):
+        article = enrichir_contenu(article)
+        update_contenu(article)
+        article = scorer_article(article)
+
+        # on mémorise le résumé existant pour ne pas l'écraser
+        ancien_resume = article.get("llm_resume")
+
+        article = scorer_llm_article(article)      # recalcule le score
+
+        # si un résumé existait déjà, on le restaure ; sinon on garde le nouveau
+        if ancien_resume:
+            article["llm_resume"] = ancien_resume
+
+        update_scores(article)
+        if i % 10 == 0:
+            print(f"  ... {i}/{len(articles)}")
+    print(f"✓ {len(articles)} articles traités")
+
+
 from pptx.dml.color import RGBColor
 
 def remplir_sommaire(slide, articles, slides_articles, prs):
