@@ -1,3 +1,40 @@
+def _plage_trimestre(trimestre: str):
+    """ '2026 – 2e Trimestre' -> ('2026-04-01', '2026-06-30'). None si illisible. """
+    if not trimestre:
+        return None
+    m_an = re.search(r"(20\d{2})", trimestre)
+    m_tr = re.search(r"([1-4])\s*(?:er|e|ème|eme)?\s*Trimestre", trimestre, re.I)
+    if not (m_an and m_tr):
+        return None
+    an, tr = int(m_an.group(1)), int(m_tr.group(1))
+    debuts = {1: "01-01", 2: "04-01", 3: "07-01", 4: "10-01"}
+    fins   = {1: "03-31", 2: "06-30", 3: "09-30", 4: "12-31"}
+    return f"{an}-{debuts[tr]}", f"{an}-{fins[tr]}"
+
+def collecter(top, seuil, trimestre=None):
+    plage = _plage_trimestre(trimestre)
+    conn = get_connection()
+    try:
+        sql = """
+            SELECT a.*, s.nom AS source_nom,
+                   substr(a.date_publication,7,4) || '-' ||
+                   substr(a.date_publication,1,2) || '-' ||
+                   substr(a.date_publication,4,2) AS date_iso
+            FROM articles a JOIN sources s ON s.id = a.source_id
+        """
+        params = ()
+        if plage:
+            sql += " WHERE date_iso BETWEEN ? AND ?"
+            params = plage
+        rows = [dict(r) for r in conn.execute(sql, params)]
+    finally:
+        conn.close()
+    # ... la suite inchangée
+
+
+
+
+
 def _traiter_articles(articles, libelle):
     print(f"{len(articles)} articles à {libelle}")
     for i, article in enumerate(articles, 1):
