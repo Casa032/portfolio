@@ -1,3 +1,17 @@
+from pptx.enum.text import MSO_ANCHOR
+
+def remplir_article(slide, art, trimestre=None):
+    t = _shape_by_name(slide, "Titre 6")
+    if t:
+        _set_text(t, art.get("titre") or "Sans titre")
+    corps = _shape_by_name(slide, "Rectangle 3")
+    if corps:
+        corps.text_frame.vertical_anchor = MSO_ANCHOR.TOP
+        corps.text_frame.margin_top = Pt(12)
+        objet = _extraire_objet(art.get("llm_resume") or "")
+        _set_text(corps, objet or art.get("resume") or "")
+
+
 def _set_text(shape, text):
     """ Remplace le texte d'une shape en gardant le style du 1er run.
 
