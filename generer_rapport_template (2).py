@@ -1,3 +1,43 @@
+def _set_text(shape, text):
+    """ Remplace le texte d'une shape en gardant le style du 1er run.
+
+    Gère le multi-lignes : chaque '\n' devient un nouveau paragraphe,
+    en réutilisant le style du paragraphe modèle (y compris pour les
+    paragraphes ajoutés, dont la mise en forme est clonée sur le modèle).
+    """
+    tf = shape.text_frame
+    lignes = (text or "").split("\n")
+
+    p0 = tf.paragraphs[0]
+    if p0.runs:
+        p0.runs[0].text = lignes[0]
+        for r in p0.runs[1:]:
+            r.text = ""
+    else:
+        p0.add_run().text = lignes[0]
+
+    # on garde une référence au XML du paragraphe modèle AVANT de supprimer les autres
+    modele_pPr = copy.deepcopy(p0._p.find(qn("a:pPr"))) if p0._p.find(qn("a:pPr")) is not None else None
+    modele_rPr = copy.deepcopy(p0.runs[0]._r.find(qn("a:rPr"))) if p0.runs and p0.runs[0]._r.find(qn("a:rPr")) is not None else None
+
+    # supprimer les paragraphes existants au-delà du premier
+    for extra in tf.paragraphs[1:]:
+        extra._p.getparent().remove(extra._p)
+
+    # ajouter un paragraphe par ligne supplémentaire, en clonant le style du modèle
+    for ligne in lignes[1:]:
+        p = tf.add_paragraph()
+        if modele_pPr is not None:
+            old_pPr = p._p.find(qn("a:pPr"))
+            if old_pPr is not None:
+                p._p.remove(old_pPr)
+            p._p.insert(0, copy.deepcopy(modele_pPr))
+        r = p.add_run()
+        r.text = ligne
+        if modele_rPr is not None:
+            r._r.insert(0, copy.deepcopy(modele_rPr))
+
+
 _LABELS = ("Titre", "Type", "Objet", "Portée")
 
 def _extraire_champ(llm_resume: str, nom_champ: str) -> str:
