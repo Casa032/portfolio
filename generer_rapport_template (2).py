@@ -1,3 +1,28 @@
+_LABELS = ("Titre", "Type", "Objet", "Portée")
+
+def _extraire_champ(llm_resume: str, nom_champ: str) -> str:
+    """ Extrait le contenu d'un champ 'Nom : ...' du résumé structuré,
+        même sur plusieurs lignes/paragraphes, jusqu'au prochain label connu. """
+    if not llm_resume:
+        return ""
+    autres = "|".join(l for l in _LABELS if l != nom_champ)
+    pattern = rf"(?im)^\s*[-•*]?\s*{nom_champ}\s*:\s*(.+?)(?=\n\s*[-•*]?\s*(?:{autres})\s*:|\Z)"
+    m = re.search(pattern, llm_resume, flags=re.DOTALL)
+    if m:
+        return m.group(1).strip()
+    return ""
+
+
+def _extraire_objet(llm_resume: str) -> str:
+    champ = _extraire_champ(llm_resume, "Objet")
+    return champ or llm_resume.strip()
+
+
+def _extraire_titre(llm_resume: str) -> str:
+    return _extraire_champ(llm_resume, "Titre")
+
+
+
 def _plage_trimestre(trimestre: str):
     """ '2026 – 2e Trimestre' -> ('2026-04-01', '2026-06-30'). None si illisible. """
     if not trimestre:
