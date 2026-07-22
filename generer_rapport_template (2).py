@@ -1,3 +1,233 @@
+
+"""
+fewshot_dynamique.py — Sélection dynamique d'exemples few-shot par similarité sémantique.
+
+Charge le dataset annoté (CSV/Excel, score 0-10), calcule les embeddings une
+fois, les met en cache sur disque, puis permet de récupérer les k exemples
+les plus proches d'un article donné pour construire le prompt.
+"""
+import os
+import numpy as np
+import pandas as pd
+from sentence_transformers import SentenceTransformer
+
+# --- config : à ajuster selon ton fichier ---
+DATASET_PATH = "dataset_annote.xlsx"      # ou .csv
+COL_TEXTE = "resume"                       # colonne texte utilisée pour le matching
+COL_SCORE = "score"                        # colonne score annoté 0-10
+COL_TITRE = "titre"                        # colonne titre (pour affichage dans le prompt)
+
+CACHE_PATH = "fewshot_embeddings.npz"      # cache des embeddings calculés
+EMBED_MODEL = "paraphrase-multilingual-MiniLM-L12-v2"  # léger, multilingue, tourne en local
+
+_embedder = None
+_dataset = None
+_embeddings = None
+
+
+def _get_embedder():
+    global _embedder
+    if _embedder is None:
+        _embedder = SentenceTransformer(EMBED_MODEL)
+    return _embedder
+
+
+def _charger_dataset():
+    if DATASET_PATH.endswith(".csv"):
+        return pd.read_csv(DATASET_PATH)
+    return pd.read_excel(DATASET_PATH)
+
+
+def construire_index(force=False):
+    """ Calcule (ou recharge depuis le cache) les embeddings du dataset annoté.
+        À appeler une fois au démarrage du script de scoring. """
+    global _dataset, _embeddings
+
+    _dataset = _charger_dataset()
+    textes = _dataset[COL_TEXTE].fillna("").astype(str).tolist()
+
+    if not force and os.path.exists(CACHE_PATH):
+        cache = np.load(CACHE_PATH)
+        if cache["n"] == len(textes):
+            _embeddings = cache["embeddings"]
+            return
+
+    embedder = _get_embedder()
+    _embeddings = embedder.encode(textes, show_progress_bar=False, normalize_embeddings=True)
+    np.savez(CACHE_PATH, embeddings=_embeddings, n=len(textes))
+
+
+def ajouter_exemple(titre, resume, score):
+    """ Ajoute un nouvel exemple annoté au dataset + à l'index, sans tout
+        recalculer. Pratique pour enrichir le dataset au fil de l'eau. """
+    global _dataset, _embeddings
+
+    if _dataset is None:
+        construire_index()
+
+    nouvelle_ligne = {COL_TITRE: titre, COL_TEXTE: resume, COL_SCORE: score}
+    _dataset = pd.concat([_dataset, pd.DataFrame([nouvelle_ligne])], ignore_index=True)
+
+    embedder = _get_embedder()
+    nouveau_vecteur = embedder.encode([resume], normalize_embeddings=True)
+    _embeddings = np.vstack([_embeddings, nouveau_vecteur])
+
+    if DATASET_PATH.endswith(".csv"):
+        _dataset.to_csv(DATASET_PATH, index=False)
+    else:
+        _dataset.to_excel(DATASET_PATH, index=False)
+    np.savez(CACHE_PATH, embeddings=_embeddings, n=len(_dataset))
+
+
+def _tranche(score):
+    if score <= 3:
+        return "0-3"
+    if score <= 6:
+        return "4-6"
+    return "7-10"
+
+
+def selectionner_exemples(article_texte, k=5, min_par_tranche=1, seuil_similarite=0.35):
+    """ Renvoie les k exemples les plus proches de l'article à classer, à
+        condition qu'ils dépassent un seuil de similarité minimum. En dessous,
+        l'exemple est écarté plutôt que forcé dans le few-shot (peut donc
+        renvoyer une liste vide ou plus courte que k). """
+    if _dataset is None:
+        construire_index()
+
+    embedder = _get_embedder()
+    vecteur_article = embedder.encode([article_texte], normalize_embeddings=True)[0]
+
+    similarites = _embeddings @ vecteur_article  # cosinus (vecteurs déjà normalisés)
+    ordre = np.argsort(-similarites)
+
+    resultats = []
+    ids_pris = set()
+    compte_par_tranche = {}
+    for idx in ordre:
+        if len(resultats) >= k:
+            break
+        if similarites[idx] < seuil_similarite:
+            break  # au-delà, plus rien n'est assez proche — on arrête
+        ligne = _dataset.iloc[idx]
+        resultats.append(ligne)
+        ids_pris.add(idx)
+        t = _tranche(ligne[COL_SCORE])
+        compte_par_tranche[t] = compte_par_tranche.get(t, 0) + 1
+
+    # rattrapage min_par_tranche, avec le même seuil de similarité
+    tranches_dataset = _dataset[COL_SCORE].apply(_tranche).unique()
+    for t in tranches_dataset:
+        if compte_par_tranche.get(t, 0) < min_par_tranche:
+            for idx in ordre:
+                if idx in ids_pris or similarites[idx] < seuil_similarite:
+                    continue
+                ligne = _dataset.iloc[idx]
+                if _tranche(ligne[COL_SCORE]) == t:
+                    resultats.append(ligne)
+                    ids_pris.add(idx)
+                    compte_par_tranche[t] = compte_par_tranche.get(t, 0) + 1
+                    break
+
+    return resultats
+
+
+def formatter_exemples_pour_prompt(exemples):
+    """ Formate les exemples sélectionnés en texte injectable dans le prompt LLM. """
+    blocs = []
+    for ex in exemples:
+        blocs.append(
+            f"Titre : {ex[COL_TITRE]}\n"
+            f"Résumé : {ex[COL_TEXTE]}\n"
+            f"Score attribué : {ex[COL_SCORE]}/10"
+        )
+    return "\n\n".join(blocs)
+
+
+
+
+
+
+---------------------------------------
+
+
+
+"""
+diagnostic_similarite.py — Analyse la distribution des similarités sémantiques
+du dataset annoté pour choisir un seuil de similarité justifié, plutôt qu'estimé.
+
+Usage : python diagnostic_similarite.py
+"""
+import numpy as np
+import fewshot_dynamique as fs
+
+fs.construire_index(force=True)
+
+dataset = fs._dataset
+embeddings = fs._embeddings
+scores = dataset[fs.COL_SCORE].to_numpy()
+
+n = len(dataset)
+print(f"Dataset : {n} articles annotés\n")
+
+# --- matrice de similarité complète (toutes les paires i < j) ---
+sim_matrix = embeddings @ embeddings.T
+
+paires_sim = []
+paires_ecart = []
+for i in range(n):
+    for j in range(i + 1, n):
+        paires_sim.append(sim_matrix[i, j])
+        paires_ecart.append(abs(scores[i] - scores[j]))
+
+paires_sim = np.array(paires_sim)
+paires_ecart = np.array(paires_ecart)
+
+# --- regroupement par écart de score ---
+groupes = {
+    "écart faible (0-2)":  paires_sim[paires_ecart <= 2],
+    "écart moyen (3-5)":   paires_sim[(paires_ecart > 2) & (paires_ecart <= 5)],
+    "écart fort (6-10)":   paires_sim[paires_ecart > 5],
+}
+
+print(f"{'Groupe':<22} {'n paires':>9} {'moyenne':>9} {'médiane':>9} {'p25':>7} {'p75':>7} {'p90':>7}")
+for nom, valeurs in groupes.items():
+    if len(valeurs) == 0:
+        print(f"{nom:<22} {'—':>9}")
+        continue
+    print(f"{nom:<22} {len(valeurs):>9} "
+          f"{valeurs.mean():>9.3f} {np.median(valeurs):>9.3f} "
+          f"{np.percentile(valeurs, 25):>7.3f} {np.percentile(valeurs, 75):>7.3f} "
+          f"{np.percentile(valeurs, 90):>7.3f}")
+
+# --- suggestion de seuil ---
+ecart_fort = groupes["écart fort (6-10)"]
+ecart_faible = groupes["écart faible (0-2)"]
+
+if len(ecart_fort) > 0 and len(ecart_faible) > 0:
+    seuil_suggere = np.percentile(ecart_fort, 90)
+    recouvrement = (ecart_faible < seuil_suggere).mean() * 100
+    print(f"\nSeuil suggéré : {seuil_suggere:.3f}")
+    print(f"→ Au-dessus de ce seuil, seuls ~10% des paires à écart fort passeraient encore.")
+    print(f"→ Mais {recouvrement:.0f}% des paires à écart faible seraient EXCLUES par ce seuil.")
+    if recouvrement > 30:
+        print("  (recouvrement élevé : les deux groupes se chevauchent beaucoup, "
+              "les embeddings séparent mal la pertinence par le score sur ce corpus — "
+              "seuil à interpréter avec prudence, ou revoir la stratégie.)")
+else:
+    print("\nPas assez de paires dans un groupe pour suggérer un seuil "
+          "(dataset trop petit ou peu de variance de score).")
+
+
+
+------—--------------
+
+
+
+
+
+
+
 from pptx.enum.text import MSO_ANCHOR
 
 def remplir_article(slide, art, trimestre=None):
