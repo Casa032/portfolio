@@ -1,3 +1,188 @@
+"""
+fewshot_dynamique.py — Sélection dynamique d'exemples few-shot par similarité sémantique.
+
+Charge le dataset annoté (CSV/Excel, score 0-10), calcule les embeddings à
+partir d'une combinaison résumé + contenu (en ignorant les placeholders type
+"pas de résumé disponible"), les met en cache sur disque, puis permet de
+récupérer les k exemples les plus proches d'un article donné pour construire
+le prompt.
+"""
+import os
+import numpy as np
+import pandas as pd
+from sentence_transformers import SentenceTransformer
+
+# --- config : à ajuster selon ton fichier ---
+DATASET_PATH = "dataset_annote.xlsx"      # ou .csv
+COL_TEXTE = "resume"                       # colonne résumé
+COL_CONTENU = "contenu"                    # colonne contenu complet
+COL_SCORE = "score"                        # colonne score annoté 0-10
+COL_TITRE = "titre"                        # colonne titre (pour affichage dans le prompt)
+
+CACHE_PATH = "fewshot_embeddings.npz"      # cache des embeddings calculés
+EMBED_MODEL = "paraphrase-multilingual-MiniLM-L12-v2"  # léger, multilingue, tourne en local
+
+# valeurs à traiter comme "pas de résumé/contenu" malgré une cellule non vide
+PLACEHOLDERS_VIDES = {
+    "pas de résumé disponible",
+    "pas de resume disponible",
+    "non disponible",
+    "n/a",
+    "",
+}
+
+_embedder = None
+_dataset = None
+_embeddings = None
+
+
+def _get_embedder():
+    global _embedder
+    if _embedder is None:
+        _embedder = SentenceTransformer(EMBED_MODEL)
+    return _embedder
+
+
+def _charger_dataset():
+    if DATASET_PATH.endswith(".csv"):
+        return pd.read_csv(DATASET_PATH)
+    return pd.read_excel(DATASET_PATH)
+
+
+def _texte_valide(valeur) -> str:
+    """ Renvoie le texte nettoyé, ou "" si c'est vide/un placeholder connu. """
+    t = str(valeur or "").strip()
+    if t.lower() in PLACEHOLDERS_VIDES:
+        return ""
+    return t
+
+
+def _texte_ligne(ligne):
+    """ Texte utilisé pour l'embedding : combinaison résumé + contenu,
+        en ignorant les placeholders ('pas de résumé disponible' etc.).
+        Fonctionne avec une Series pandas ou un dict. """
+    resume = _texte_valide(ligne.get(COL_TEXTE) if hasattr(ligne, "get") else ligne[COL_TEXTE])
+    contenu = _texte_valide(ligne.get(COL_CONTENU) if hasattr(ligne, "get") else ligne[COL_CONTENU])
+    morceaux = [t for t in (resume, contenu) if t]
+    return "\n\n".join(morceaux)
+
+
+def construire_index(force=False):
+    """ Calcule (ou recharge depuis le cache) les embeddings du dataset annoté.
+        À appeler une fois au démarrage du script de scoring. """
+    global _dataset, _embeddings
+
+    _dataset = _charger_dataset()
+    textes = [_texte_ligne(row) for _, row in _dataset.iterrows()]
+
+    if not force and os.path.exists(CACHE_PATH):
+        cache = np.load(CACHE_PATH)
+        if cache["n"] == len(textes):
+            _embeddings = cache["embeddings"]
+            return
+
+    embedder = _get_embedder()
+    _embeddings = embedder.encode(textes, show_progress_bar=False, normalize_embeddings=True)
+    np.savez(CACHE_PATH, embeddings=_embeddings, n=len(textes))
+
+
+def ajouter_exemple(titre, score, resume=None, contenu=None):
+    """ Ajoute un nouvel exemple annoté au dataset + à l'index, sans tout
+        recalculer. resume ou contenu peuvent être vides, pas les deux. """
+    global _dataset, _embeddings
+
+    if _dataset is None:
+        construire_index()
+
+    nouvelle_ligne = {
+        COL_TITRE: titre,
+        COL_TEXTE: resume or "",
+        COL_CONTENU: contenu or "",
+        COL_SCORE: score,
+    }
+    _dataset = pd.concat([_dataset, pd.DataFrame([nouvelle_ligne])], ignore_index=True)
+
+    embedder = _get_embedder()
+    texte_pour_embedding = _texte_ligne(nouvelle_ligne)
+    nouveau_vecteur = embedder.encode([texte_pour_embedding], normalize_embeddings=True)
+    _embeddings = np.vstack([_embeddings, nouveau_vecteur])
+
+    if DATASET_PATH.endswith(".csv"):
+        _dataset.to_csv(DATASET_PATH, index=False)
+    else:
+        _dataset.to_excel(DATASET_PATH, index=False)
+    np.savez(CACHE_PATH, embeddings=_embeddings, n=len(_dataset))
+
+
+def _tranche(score):
+    if score <= 3:
+        return "0-3"
+    if score <= 6:
+        return "4-6"
+    return "7-10"
+
+
+def selectionner_exemples(article_texte, k=5, min_par_tranche=1, seuil_similarite=0.0):
+    """ Renvoie les k exemples les plus proches de l'article à classer, à
+        condition qu'ils dépassent un seuil de similarité minimum. En dessous,
+        l'exemple est écarté plutôt que forcé dans le few-shot (peut donc
+        renvoyer une liste vide ou plus courte que k).
+
+        seuil_similarite=0.0 par défaut : aucun filtrage réel (le diagnostic
+        a montré qu'un seuil strict n'est pas fiable sur ce corpus) — à
+        remonter uniquement pour écarter les cas complètement hors-sujet. """
+    if _dataset is None:
+        construire_index()
+
+    embedder = _get_embedder()
+    vecteur_article = embedder.encode([article_texte], normalize_embeddings=True)[0]
+
+    similarites = _embeddings @ vecteur_article  # cosinus (vecteurs déjà normalisés)
+    ordre = np.argsort(-similarites)
+
+    resultats = []
+    ids_pris = set()
+    compte_par_tranche = {}
+    for idx in ordre:
+        if len(resultats) >= k:
+            break
+        if similarites[idx] < seuil_similarite:
+            break  # au-delà, plus rien n'est assez proche — on arrête
+        ligne = _dataset.iloc[idx]
+        resultats.append(ligne)
+        ids_pris.add(idx)
+        t = _tranche(ligne[COL_SCORE])
+        compte_par_tranche[t] = compte_par_tranche.get(t, 0) + 1
+
+    # rattrapage min_par_tranche, avec le même seuil de similarité
+    tranches_dataset = _dataset[COL_SCORE].apply(_tranche).unique()
+    for t in tranches_dataset:
+        if compte_par_tranche.get(t, 0) < min_par_tranche:
+            for idx in ordre:
+                if idx in ids_pris or similarites[idx] < seuil_similarite:
+                    continue
+                ligne = _dataset.iloc[idx]
+                if _tranche(ligne[COL_SCORE]) == t:
+                    resultats.append(ligne)
+                    ids_pris.add(idx)
+                    compte_par_tranche[t] = compte_par_tranche.get(t, 0) + 1
+                    break
+
+    return resultats
+
+
+def formatter_exemples_pour_prompt(exemples):
+    """ Formate les exemples sélectionnés en texte injectable dans le prompt LLM. """
+    blocs = []
+    for ex in exemples:
+        texte = _texte_ligne(ex)
+        blocs.append(
+            f"Titre : {ex[COL_TITRE]}\n"
+            f"Contenu : {texte}\n"
+            f"Score attribué : {ex[COL_SCORE]}/10"
+        )
+    return "\n\n".join(blocs)
+
 
 """
 fewshot_dynamique.py — Sélection dynamique d'exemples few-shot par similarité sémantique.
