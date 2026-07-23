@@ -1,3 +1,27 @@
+// Absent = n'a rempli aucune fiche cette quinzaine (même si ses sujets
+  // ont été renseignés par un collaborateur)
+  let isAbsent=!_aRempli(sel);
+  if(isAbsent){
+    // Retrouver la dernière quinzaine où cette personne a réellement rempli
+    let lastQ="";
+    (DATA.quinzaines||[]).filter(q=>q<quinzaineActive).sort().forEach(q=>{
+      const snap=DATA.snapshots[q];
+      const auteurs=new Set();
+      (snap?.projets||[]).forEach(p=>{
+        String(p.auteurs_quinzaine||"").split(";").map(s=>s.trim().toLowerCase())
+          .filter(Boolean).forEach(a=>auteurs.add(a));
+      });
+      if(auteurs.has(String(sel).trim().toLowerCase()))lastQ=q;
+    });
+    if(lastQ){
+      const snap=DATA.snapshots[lastQ];
+      detail=(snap?.projets||[]).filter(p=>p.responsable_principal===sel)
+        .sort((a,b)=>({"En retard":0,"À risque":1,"En cours":2,"Stand by":3,"Terminé":4}[a.statut]||9)-
+                      ({"En retard":0,"À risque":1,"En cours":2,"Stand by":3,"Terminé":4}[b.statut]||9));
+    }
+}
+
+
 # ── Auteurs ayant réellement rempli une fiche pour cette quinzaine ──
         # (avant fusion : dfs contient encore le source_fichier de chaque ligne)
         auteurs_q = set()
