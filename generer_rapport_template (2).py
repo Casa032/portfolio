@@ -1,3 +1,43 @@
+# ── Auteurs ayant réellement rempli une fiche pour cette quinzaine ──
+        # (avant fusion : dfs contient encore le source_fichier de chaque ligne)
+        auteurs_q = set()
+        for _df in dfs:
+            if "source_fichier" in _df.columns:
+                for src in _df["source_fichier"].dropna().unique():
+                    a = re.sub(r"(?i)^fiches?_monito", "", str(src)).strip()
+                    a = re.sub(r"(?i)[.]xls[xm]?$", "", a)
+                    a = a.replace("_", " ").strip()
+                    if a:
+                        auteurs_q.add(a)
+        df_c["auteurs_quinzaine"] = "; ".join(sorted(auteurs_q))
+
+________
+
+# Le référentiel fait autorité sur le responsable principal
+            if "responsable_principal_meta" in df_c.columns:
+                mask = df_c["responsable_principal_meta"].notna() & \
+                       (df_c["responsable_principal_meta"].astype(str).str.strip() != "")
+                df_c.loc[mask, "responsable_principal"] = df_c.loc[mask, "responsable_principal_meta"]
+
+___
+
+// ── Collaborateurs absents (n'ont rempli aucune fiche cette quinzaine) ──
+  // Source : auteurs_quinzaine, produit par le parser depuis source_fichier
+  const _auteursQ=new Set();
+  (DATA.projets||[]).forEach(p=>{
+    String(p.auteurs_quinzaine||"").split(";").map(s=>s.trim().toLowerCase())
+      .filter(Boolean).forEach(a=>_auteursQ.add(a));
+  });
+  const _aRempli=nom=>{
+    const n=String(nom||"").trim().toLowerCase();
+    if(!n)return false;
+    if(_auteursQ.size===0)return true;   // pas d'info → ne marquer personne absent
+    return _auteursQ.has(n);
+  };
+  const respActifs=new Set(
+    DATA.projets.map(p=>p.responsable_principal).filter(Boolean).filter(_aRempli)
+  );
+
 """
 fewshot_dynamique.py — Sélection dynamique d'exemples few-shot par similarité sémantique.
 
