@@ -1,3 +1,57 @@
+
+import torch
+import torch.nn.functional as F
+from transformers import AutoTokenizer, AutoModel
+
+EMBED_MODEL = "microsoft/harrier-oss-v1-0.6b"
+INSTRUCTION = (
+    "Instruct: Étant donné un article de veille juridique sur la protection "
+    "des données personnelles (RGPD/DPO), retrouve les articles annotés les "
+    "plus proches en pertinence réglementaire\nQuery: "
+)
+
+_tokenizer = None
+_model = None
+
+
+def _get_embedder():
+    global _tokenizer, _model
+    if _model is None:
+        _tokenizer = AutoTokenizer.from_pretrained(EMBED_MODEL)
+        _model = AutoModel.from_pretrained(EMBED_MODEL, dtype="auto")
+        _model.eval()
+        if torch.cuda.is_available():
+            _model.cuda()
+    return _tokenizer, _model
+
+
+def _last_token_pool(last_hidden_state, attention_mask):
+    left_padding = attention_mask[:, -1].sum() == attention_mask.shape[0]
+    if left_padding:
+        return last_hidden_state[:, -1]
+    sequence_lengths = attention_mask.sum(dim=1) - 1
+    batch_size = last_hidden_state.shape[0]
+    return last_hidden_state[torch.arange(batch_size), sequence_lengths]
+
+
+def _encoder(textes, avec_instruction=False):
+    """ avec_instruction=True pour l'article à classer (query),
+        False pour les documents du dataset annoté. """
+    tokenizer, model = _get_embedder()
+    if avec_instruction:
+        textes = [INSTRUCTION + t for t in textes]
+
+    batch = tokenizer(textes, max_length=8192, padding=True, truncation=True, return_tensors="pt")
+    if torch.cuda.is_available():
+        batch = {k: v.cuda() for k, v in batch.items()}
+
+    with torch.no_grad():
+        outputs = model(**batch)
+        embeddings = _last_token_pool(outputs.last_hidden_state, batch["attention_mask"])
+        embeddings = F.normalize(embeddings, p=2, dim=1)
+
+    return embeddings.cpu().numpy()
+
 let out="";
         if(isAbsent&&detail.length){
           // Regrouper par contributeur : un sous-bloc par personne
