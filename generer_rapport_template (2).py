@@ -1,3 +1,77 @@
+// ── Détail du collaborateur sélectionné ─────────────────────────
+  const _tri=(a,b)=>({"En retard":0,"À risque":1,"En cours":2,"Stand by":3,"Terminé":4}[a.statut]||9)-
+                    ({"En retard":0,"À risque":1,"En cours":2,"Stand by":3,"Terminé":4}[b.statut]||9);
+
+  // Bloc 1 : sujets renseignés cette quinzaine (par lui ou par un collaborateur)
+  let detail=DATA.projets.filter(p=>p.responsable_principal===sel).sort(_tri);
+
+  // Absent = n'a rempli aucune fiche cette quinzaine
+  const isAbsent=!_aRempli(sel);
+
+  // Bloc 2 : ses autres sujets, repris de la dernière quinzaine qu'il a lui-même remplie
+  let detailHist=[];
+  let lastQAbs="";
+  if(isAbsent){
+    (DATA.quinzaines||[]).filter(q=>q<quinzaineActive).sort().forEach(q=>{
+      const snap=DATA.snapshots[q];
+      const auteurs=new Set();
+      (snap?.projets||[]).forEach(p=>{
+        String(p.auteurs_quinzaine||"").split(";").map(s=>s.trim().toLowerCase())
+          .filter(Boolean).forEach(a=>auteurs.add(a));
+      });
+      if(auteurs.has(String(sel).trim().toLowerCase()))lastQAbs=q;
+    });
+    if(lastQAbs){
+      const dejaVus=new Set(detail.map(p=>p.projet_id||p.ref_sujet));
+      detailHist=(DATA.snapshots[lastQAbs]?.projets||[])
+        .filter(p=>p.responsable_principal===sel)
+        .filter(p=>!dejaVus.has(p.projet_id||p.ref_sujet))   // pas de doublon avec le bloc 1
+        .sort(_tri);
+    }
+  }
+
+_____
+<div class="card">
+      <div class="card-title">sujets :: ${esc(sel)} (${detail.length+detailHist.length})</div>
+      ${isAbsent?`<div style="font-size:10px;color:var(--amber);font-family:var(--font-mono);margin-bottom:10px;padding:6px 10px;background:var(--amber-dim);border-radius:var(--radius);border:1px solid rgba(245,158,11,.2)">
+        ⚠ ${esc(sel)} n'a rempli aucune fiche cette quinzaine
+      </div>`:""}
+      <div class="proj-list">
+        ${(()=>{
+        const projItemFn=(p,histQ)=>{
+          const partage=(p.partage_prochain_point||"").toString().toLowerCase().trim();
+          const aPartager=partage==="oui"||partage==="yes"||partage==="1";
+          let html=projItem(p);
+          const id=p.projet_id||p.ref_sujet;
+          if(histQ){
+            html=html.replace(`openModal('${esc(id)}')`,`openModalHistorique('${esc(id)}','${esc(histQ)}')`);
+          }
+          if(aPartager){
+            html=html.replace('class="proj-item"','class="proj-item proj-partage"');
+            const call=histQ?`openModalHistorique('${esc(id)}','${esc(histQ)}')`:`openModal('${esc(id)}')`;
+            html=html.replace(`onclick="${call}"`,`onclick="marquerTraite(this);${call}"`);
+            html=html.replace('</div>',`<span style="font-size:9px;background:var(--amber-dim);color:var(--amber);border:1px solid rgba(245,158,11,.3);padding:1px 5px;border-radius:8px;font-family:var(--font-mono);flex-shrink:0;margin-left:auto">!!! à partager</span></div>`);
+          }
+          return html;
+        };
+        const sousTitre=(txt,coul)=>`<div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:${coul};font-family:var(--font-mono);padding:10px 0 5px">${txt}</div>`;
+        let out="";
+        if(isAbsent&&detail.length){
+          out+=sousTitre(`renseignés par un collaborateur (${detail.length})`,"var(--cyan)");
+        }
+        out+=detail.map(p=>projItemFn(p,"")).join("");
+        if(detailHist.length){
+          out+=sousTitre(`dernière quinzaine remplie — ${esc(lastQAbs)} (${detailHist.length})`,"var(--amber)");
+          out+=detailHist.map(p=>projItemFn(p,lastQAbs)).join("");
+        }
+        return out||'<div style="color:var(--text3);font-size:11px;font-family:var(--font-mono);padding:8px">// aucun sujet</div>';
+        })()}
+      </div>
+    </div>`;
+
+___
+
+
 // Absent = n'a rempli aucune fiche cette quinzaine (même si ses sujets
   // ont été renseignés par un collaborateur)
   let isAbsent=!_aRempli(sel);
