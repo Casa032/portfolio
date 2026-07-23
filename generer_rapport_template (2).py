@@ -1,3 +1,40 @@
+let out="";
+        if(isAbsent&&detail.length){
+          // Regrouper par contributeur : un sous-bloc par personne
+          const parContrib={};
+          const sansContrib=[];
+          detail.forEach(p=>{
+            const cs=String(p.contributeurs_sujet||"").split(";")
+                       .map(s=>s.trim()).filter(Boolean)
+                       .filter(c=>c.toLowerCase()!==String(sel).trim().toLowerCase());
+            if(cs.length){cs.forEach(c=>{(parContrib[c]=parContrib[c]||[]).push(p);});}
+            else sansContrib.push(p);
+          });
+          Object.keys(parContrib).sort().forEach(c=>{
+            out+=sousTitre(`renseignés par ${esc(c)} (${parContrib[c].length})`,"var(--cyan)");
+            out+=parContrib[c].map(p=>projItemFn(p,"")).join("");
+          });
+          if(sansContrib.length){
+            out+=sousTitre(`renseignés (${sansContrib.length})`,"var(--cyan)");
+            out+=sansContrib.map(p=>projItemFn(p,"")).join("");
+          }
+        } else {
+          out+=detail.map(p=>projItemFn(p,"")).join("");
+        }
+__
+# Contributeurs de CE sujet : qui a saisi une ligne pour lui
+        _contribs = []
+        if "source_fichier" in groupe.columns:
+            for src in groupe["source_fichier"].dropna().unique():
+                a = re.sub(r"(?i)^fiches?_monito", "", str(src)).strip()
+                a = re.sub(r"(?i)[.]xls[xm]?$", "", a)
+                a = a.replace("_", " ").strip()
+                if a and a.lower() != "template":
+                    _contribs.append(a)
+        row["contributeurs_sujet"] = "; ".join(sorted(set(_contribs)))
+
+
+
 // ── Personnes présentes uniquement dans l'historique (aucun sujet cette quinzaine) ──
   // (celles qui ont déjà une carte normale sont exclues → une seule carte par personne)
   const _nomsAvecCarte=new Set(resps.map(([name])=>name));
