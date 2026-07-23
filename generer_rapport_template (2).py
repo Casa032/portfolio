@@ -1,3 +1,49 @@
+// ── Personnes présentes uniquement dans l'historique (aucun sujet cette quinzaine) ──
+  // (celles qui ont déjà une carte normale sont exclues → une seule carte par personne)
+  const _nomsAvecCarte=new Set(resps.map(([name])=>name));
+  const absentsSansCarte=Object.entries(respHistorique)
+    .filter(([name])=>!_nomsAvecCarte.has(name))
+    .sort();
+____
+
+<div class="collab-grid">
+      ${resps.map(([name,r])=>{
+        const abs=!_aRempli(name);
+        return `
+        <div class="collab-card ${name===sel?"selected":""}" onclick="renderCollabs('${esc(name)}')"
+             ${abs?'style="border-style:dashed"':""}>
+          <div class="collab-header">
+            <div class="avatar" style="background:${respColor(name)}22;color:${respColor(name)}">${initials(name)}</div>
+            <div>
+              <div class="collab-name">${esc(name)}</div>
+              <div class="collab-sub">${r.total} sujet${r.total>1?"s":""} · ${r.en_cours||0} actif${(r.en_cours||0)>1?"s":""}</div>
+              ${abs?`<div style="font-size:9px;color:var(--amber);font-family:var(--font-mono);margin-top:2px">⚠ n'a pas rempli cette quinzaine</div>`:""}
+            </div>
+          </div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">
+            ${(r.domaines||[]).slice(0,3).map(d=>`<span style="font-size:9px;padding:2px 6px;border-radius:10px;background:var(--bg4);color:var(--text3);font-family:var(--font-mono)">${esc(d)}</span>`).join("")}
+          </div>
+          <div class="charge-bar"><div class="charge-fill" style="width:${Math.round((r.en_cours||0)/maxE*100)}%;background:${abs?"var(--amber)":respColor(name)}"></div></div>
+        </div>`;}).join("")}
+      ${absentsSansCarte.map(([name,lastRow])=>`
+        <div class="collab-card ${name===sel?"selected":""}" onclick="renderCollabs('${esc(name)}')"
+             style="opacity:.65;border-style:dashed">
+          <div class="collab-header">
+            <div class="avatar" style="background:${respColor(name)}22;color:${respColor(name)}">${initials(name)}</div>
+            <div>
+              <div class="collab-name">${esc(name)}</div>
+              <div class="collab-sub" style="color:var(--amber)">Absent cette quinzaine</div>
+              <div style="font-size:8px;color:var(--text3);font-family:var(--font-mono)">
+                dernier suivi : ${esc(lastRow.quinzaine)}
+              </div>
+            </div>
+          </div>
+          <div class="charge-bar"><div class="charge-fill" style="width:0%;background:var(--amber)"></div></div>
+        </div>`).join("")}
+    </div>
+
+
+
 // ── Détail du collaborateur sélectionné ─────────────────────────
   const _tri=(a,b)=>({"En retard":0,"À risque":1,"En cours":2,"Stand by":3,"Terminé":4}[a.statut]||9)-
                     ({"En retard":0,"À risque":1,"En cours":2,"Stand by":3,"Terminé":4}[b.statut]||9);
