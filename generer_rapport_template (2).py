@@ -1,3 +1,36 @@
+def estimer_score_knn(article_texte, k=10):
+    """ Estime le score d'un article par moyenne pondérée des k plus proches
+        voisins du dataset annoté, pondérés par leur similarité cosinus.
+        Sert de signal statistique complémentaire au jugement du LLM —
+        ne remplace pas le score du LLM, vient en renfort/vérification. """
+    if _dataset is None:
+        construire_index()
+
+    embedder = _get_embedder()
+    vecteur_article = embedder.encode(
+        [article_texte], normalize_embeddings=True, prompt=INSTRUCTION
+    )[0]
+
+    similarites = _embeddings @ vecteur_article
+    ordre = np.argsort(-similarites)[:k]
+
+    poids = similarites[ordre]
+    poids = np.clip(poids, 0, None)  # ignore les similarités négatives (rare mais possible)
+
+    if poids.sum() == 0:
+        return None  # aucun voisin exploitable (tous à similarité nulle/négative)
+
+    scores_voisins = _dataset.iloc[ordre][COL_SCORE].to_numpy(dtype=float)
+    score_estime = float(np.average(scores_voisins, weights=poids))
+
+    return {
+        "score_estime": round(score_estime, 1),
+        "k_utilise": len(ordre),
+        "similarite_max": float(similarites[ordre[0]]),
+        "similarite_min": float(similarites[ordre[-1]]),
+    }
+
+
 
 """
 fewshot_dynamique.py — Sélection dynamique d'exemples few-shot par similarité sémantique.
