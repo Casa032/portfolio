@@ -1,3 +1,13 @@
+def _demander_verdict(titre: str, texte: str, bloc_few_shot: str = "", bloc_estimation: str = ""):
+    ...
+    systeme = (
+        "..."
+        f"{exemples_txt}"
+        f"{bloc_estimation}"
+        "..."
+    )
+
+
 "Réponds UNIQUEMENT par un objet JSON valide, sans texte autour :\n"
 '{"score": <entier 0-10>, "raison": "1 phrase précise citant le critère '
 'déterminant : présence/absence de sanction ou décision officielle, '
