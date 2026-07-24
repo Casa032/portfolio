@@ -1,3 +1,9 @@
+"Réponds UNIQUEMENT par un objet JSON valide, sans texte autour :\n"
+'{"score": <entier 0-10>, "raison": "1 phrase précise citant le critère '
+'déterminant : présence/absence de sanction ou décision officielle, '
+'portée contraignante ou non, lien direct ou superficiel avec le '
+'périmètre DPO", "resume_structure": "le résumé structuré multi-lignes"}'
+
 def scorer_llm_article(article: dict) -> dict:
     """ Ajoute llm_score, llm_raison et llm_resume à l'article, en place.
         Déclenche un arbitrage automatique si le score du LLM diverge trop
