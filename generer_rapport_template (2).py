@@ -1,3 +1,112 @@
+def scorer_llm_article(article: dict) -> dict:
+    """ Ajoute llm_score, llm_raison et llm_resume à l'article, en place.
+        Déclenche un arbitrage automatique si le score du LLM diverge trop
+        de l'estimation statistique k-NN. """
+    if not LLM_ACTIVE:
+        return article
+
+    texte = (
+        article.get("contenu")
+        or article.get("resume")
+        or article.get("llm_resume")
+        or ""
+    )
+
+    exemples = fs.selectionner_exemples(texte, k=5, min_par_tranche=1)
+    bloc_few_shot = fs.formatter_exemples_pour_prompt(exemples)
+
+    verdict = _demander_verdict(article.get("titre"), texte, bloc_few_shot)
+    if verdict is None:
+        return article
+
+    score, raison, resume_struct = verdict
+    article["llm_score"], article["llm_raison"], article["llm_resume"] = score, raison, resume_struct
+
+    estimation = fs.estimer_score_knn(texte, k=10)
+    if estimation is not None:
+        ecart = abs(score - estimation["score_estime"])
+        article["score_estime_knn"] = estimation["score_estime"]
+        article["ecart_knn"] = ecart
+
+        if ecart > SEUIL_ECART_ARBITRAGE:
+            arbitrage = _demander_arbitrage(
+                article.get("titre"), texte, score, raison,
+                estimation["score_estime"], bloc_few_shot,
+            )
+            if arbitrage is not None:
+                score_final, justification_arbitrage = arbitrage
+                article["llm_score"] = score_final
+                article["arbitrage_effectue"] = True
+                article["justification_arbitrage"] = justification_arbitrage
+            else:
+                article["arbitrage_effectue"] = False
+
+    return article
+
+
+def _demander_arbitrage(titre: str, texte: str, score_llm: int, raison_llm: str,
+                          score_estime: float, bloc_few_shot: str = ""):
+    """ Second appel : le LLM tranche entre son propre score et l'estimation
+        statistique, sur la base des faits — pas en moyennant. """
+    extrait = f"Titre : {titre or ''}\n\nTexte : {texte or ''}".strip()[:6000]
+    exemples_txt = f"\n{bloc_few_shot}\n" if bloc_few_shot else ""
+
+    systeme = (
+        "Tu es un assistant de veille juridique DPO/RGPD. Un premier passage "
+        "a donné les résultats suivants pour cet article :\n\n"
+        f"- Ton score initial : {score_llm}/10\n"
+        f"- Ta raison initiale : {raison_llm}\n"
+        f"- Une estimation statistique indépendante (basée sur la similarité "
+        f"avec des articles déjà annotés) suggère : {score_estime:.1f}/10\n\n"
+        "Ces deux scores divergent significativement. L'estimation statistique "
+        "est SOUVENT PEU FIABLE : elle se base sur la ressemblance textuelle "
+        "de surface, pas sur la substance réglementaire (elle confond parfois "
+        "des sujets proches en thème mais très différents en portée juridique).\n\n"
+        "Réexamine l'article et tranche UNIQUEMENT sur la base des faits "
+        "suivants, sans chercher à faire un compromis entre les deux scores :\n"
+        "- Y a-t-il une décision/sanction d'une autorité identifiée ?\n"
+        "- Le texte a-t-il une portée contraignante ou seulement indicative ?\n"
+        "- Le lien avec le périmètre DPO est-il direct ou superficiel ?\n"
+        f"{exemples_txt}\n"
+        "Réponds UNIQUEMENT par un objet JSON valide :\n"
+        '{"score_final": <entier 0-10>, "justification_arbitrage": "explique '
+        'pourquoi tu confirmes ou corriges ton score initial, en te basant sur '
+        'les faits, pas sur l\'estimation statistique"}'
+    )
+
+    for tentative in range(1, MAX_RETRIES_LLM + 1):
+        time.sleep(DELAI_LLM)
+        try:
+            resp = openai.chat.completions.create(
+                model=LLM_MODELE,
+                messages=[
+                    {"role": "system", "content": systeme},
+                    {"role": "user", "content": extrait},
+                ],
+                temperature=0,
+                response_format={"type": "json_object"},
+            )
+            contenu = resp.choices[0].message.content.strip()
+            verdict = _extraire_json(contenu)
+            if verdict is None:
+                return None
+            try:
+                score_final = int(round(float(verdict.get("score_final"))))
+            except (TypeError, ValueError):
+                return None
+            score_final = max(0, min(10, score_final))
+            justification = str(verdict.get("justification_arbitrage", "")).strip()
+            return score_final, justification
+        except openai.RateLimitError:
+            time.sleep(DELAI_LLM * tentative * 2)
+            continue
+        except Exception as e:
+            print(f"  ! arbitrage LLM indisponible : {e}")
+            return None
+
+    return None
+
+
 def estimer_score_knn(article_texte, k=10):
     """ Estime le score d'un article par moyenne pondérée des k plus proches
         voisins du dataset annoté, pondérés par leur similarité cosinus.
