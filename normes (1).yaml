@@ -1,0 +1,110 @@
+# ============================================================
+# GRILLE D'ARBORESCENCE FIXE — projet data
+# ============================================================
+# IMPORTANT : le dossier passé en --racine à chaque itération EST
+# le projet lui-même (ex: Espace_mon_super_projet). On ne le cherche
+# donc pas "à l'intérieur de lui-même" : on vérifie juste que SON NOM
+# respecte le pattern, puis "arborescence" décrit ce qu'il doit CONTENIR.
+#
+# Pour chaque élément de "arborescence" (et leurs enfants) :
+#   - "nom"         -> nom EXACT attendu (ex: "README.md")
+#   - "nom_pattern" -> nom VARIABLE, on donne une regex
+#                      (ex: dossier "r_code_nom_projet" où nom_projet change)
+#   ==> METTRE nom OU nom_pattern, JAMAIS LES DEUX.
+#
+# "type"        : "dossier" ou "fichier"
+# "obligatoire" : true  -> absence = rejet du projet
+#                 false -> absence = juste un avertissement
+# "enfants"     : liste des éléments attendus À L'INTÉRIEUR (laisser [] si aucun)
+# ============================================================
+
+nom_projet_pattern: "^Espace_[A-Za-z0-9_]+$"   # <-- MODIFIER ICI si la règle de nommage de la racine change
+
+arborescence:
+
+  - type: dossier
+    nom: ".cicd"
+    obligatoire: true
+    enfants: []
+
+  - type: fichier
+    nom: ".gitignore"
+    obligatoire: true
+    enfants: []
+
+  - type: fichier
+    nom: "README.md"
+    obligatoire: true
+    enfants: []
+
+  - type: fichier
+    nom: "requirements.txt"
+    obligatoire: true
+    enfants: []
+
+  - type: dossier
+    nom: "data"
+    obligatoire: true
+    enfants:
+      - type: dossier
+        nom: "01_raw"
+        obligatoire: true
+        enfants: []
+      # <-- AJOUTER ICI un autre sous-dossier de data, ex: "02_processed"
+      # - type: dossier
+      #   nom: "02_processed"
+      #   obligatoire: true
+      #   enfants: []
+
+  - type: dossier
+    nom: "production"
+    obligatoire: true
+    enfants: []
+
+  - type: dossier
+    nom: "logs"
+    obligatoire: true
+    enfants: []
+
+  - type: dossier
+    nom: "notebooks"
+    obligatoire: true
+    enfants: []
+
+  - type: dossier
+    nom_pattern: "^r_code_[A-Za-z0-9_]+$"   # <-- nom variable, comme nom_projet_pattern plus haut
+    obligatoire: true
+    enfants:
+
+      - type: fichier
+        nom: "dag.py"
+        obligatoire: true
+        enfants: []
+
+      - type: dossier
+        nom: "recipe"
+        obligatoire: true
+        enfants: []
+
+      - type: dossier
+        nom: "src"
+        obligatoire: true
+        enfants:
+          # <-- AJOUTER ICI les sous-dossiers de src (un bloc par sous-dossier)
+          # - type: dossier
+          #   nom: "utils"
+          #   obligatoire: true
+          #   enfants: []
+          # - type: dossier
+          #   nom: "models"
+          #   obligatoire: true
+          #   enfants: []
+          []
+
+# ============================================================
+# Éléments interdits n'importe où dans l'arborescence
+# ============================================================
+patterns_interdits:
+  - "__pycache__"
+  - "*.pyc"
+  - ".ipynb_checkpoints"
