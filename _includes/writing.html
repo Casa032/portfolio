@@ -1,0 +1,23 @@
+<section id="writing">
+    <h2>Writings</h2>
+
+    <h3 class="writing-subhead">Blog</h3>
+    <div class="writing-list">
+        {% for post in site.blogs %}
+        <a href="{{ post.url | relative_url}}" class="writing-item">
+            <span class="writing-title">{{ post.title }}</span>
+            <span class="writing-date">{{ post.date | date: "%B %Y" }}</span>
+        </a>
+        {% endfor %}
+    </div>
+
+    <h3 class="writing-subhead">Papers</h3>
+    <div class="writing-list">
+        {% for paper in site.papers %}
+        <a href="{{ paper.url | relative_url }}" class="writing-item">
+            <span class="writing-title">{{ paper.title }}</span>
+            <span class="writing-date">{{ paper.authors }}</span>
+        </a>
+        {% endfor %}
+    </div>
+</section>

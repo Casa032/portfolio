@@ -1,0 +1,631 @@
+/* === Général ===*/
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    
+}
+
+:root {
+    --button: #1d471d;
+    --button-hover: #33842c;
+    --button-text: #F5F2E8;
+        
+    --navbar: #1d471d;
+    --navbar-link: #F5F2E8;
+    --navbar-link-hover: #B8C1A9;
+
+    --primary: #24382F;
+ 
+    --secondary: #6F7B61;
+    --font: 18px;
+    
+
+    --titre1: #17251F;
+    --titre2: #31463B;
+    --titre3: #6F7B61;
+    --text: #29332E;
+    --email: #082e10;
+    --background: #d8dac9da;
+    --white: #FFFFFF;
+    --border: #E2E8F0;
+
+    --tool-background: #E8EDE5;
+    --tool-text: #24382F;
+    --tool-link: #CBD4C8;
+
+    --section-background: #F5F2E8;
+    --section-border: #CBD4C8;
+    --project-stack :  #18251f;
+
+    --writing-section:#45564c ;
+
+}
+
+
+
+/* ================== Page defaults ========================*/
+body{
+    font-family:'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif ;
+    color: var(--text);
+    line-height: 1.6;
+    background-color: var(--background);
+}
+
+/* ==================== Section layout ====================== */
+section {
+    margin: 5%;
+    padding: auto 0;
+}
+
+h1 {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+}
+
+h2{
+    font-size: 1.8rem;
+    margin-bottom: 20px;
+    color: var(--titre2);
+}
+
+
+h3 {
+    font-size: 1.2rem;
+    margin-bottom: 20px;
+    color: var(--titre3);
+}
+
+p{
+    margin-bottom: 15px;
+}
+
+a {
+    text-decoration: none;
+}
+
+
+/*  ======================== Nav bar ==================*/
+
+#navbar {
+    position: fixed; 
+    top:0;
+    left: 0; 
+    width: 100%;
+    background-color: var(--navbar);
+    margin-bottom: 0;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 30px;
+    z-index: 100;
+}
+
+
+
+.nav-name{
+    font-weight: bold;
+    font-size: 15px;
+    color: var(--navbar-link)
+}
+
+.nav-links {
+    display: flex ;
+    list-style: none;
+    gap: 25px
+}
+
+.nav-links a{
+    color: var(--navbar-link);
+    font-weight: 500;
+}
+
+.nav-links a:hover {
+    color: var(--navbar-link-hover);
+    text-decoration: none;
+    
+}
+
+/* =========================== Landing ==================== */
+#landing {
+    margin-top: 15px;
+    max-width: 100%;
+    min-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center ;
+    text-align: center;
+}
+
+
+#landing h1{
+    font-size: 2rem;
+    color: var(--titre1);
+    text-align: center;
+    padding-left: 30px;
+}
+
+#landing p {
+    font-size: 1.2rem;
+    color: var(--text);
+    margin-bottom: 20px;
+}
+
+.selfie {
+    max-width: 20%;
+    min-height: 20vh;
+    border-radius: 30%;
+    margin-top: 60px;
+}
+.btn {
+    display:inline-block;
+    background-color: var(--button);
+    color: var(--button-text);
+    padding: 12px 30px;
+    margin-top: 10px;
+    border-radius: 30px;
+    font-weight: 500;
+    transition: background-color 0.3s ease;
+    text-align: center;
+    
+}
+
+.btn:hover {
+    background-color: var(--button-hover);
+}
+
+/* ====================== About =============================================*/
+
+#about{
+    padding-top: 5%;
+}
+
+#about p{
+    font-size: var(--font);
+    text-align: justify;
+}
+
+/* ======================= Skills / tools list =================== */
+#skills{
+    padding-top: 5%;
+}
+
+#skills p{
+    font-size: var(--font);
+}
+.tools-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    list-style: none;
+    margin-top: 20px;
+}
+
+.tools-list a {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 18px;
+    background-color: var(--tool-background);
+    color: var(--tool-text);
+    border-radius: 20px;
+    font-weight: 500;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.tools-list a i {
+    font-size: 1.2rem;
+}
+
+.tools-list a:hover {
+    background-color: var(--tool-link);
+    color: #9c9b98;
+    text-decoration: none;
+}
+
+
+.icon-argis{
+    width: 2rem;
+    height: 1.2rem ;
+}
+.icon-sci{
+    width: 2rem;
+    height: 1.2rem ;
+}
+.icon{
+    width: 1.2rem;
+    height: 1.2rem ;
+}
+
+/* ======================== Projects ===================== */
+#projects{
+    padding-top: 5%;
+}
+
+
+.projects-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 25px;
+    margin-top: 20px;
+    font-size: var(--font);
+}
+
+.project {
+    background-color: var(--section-background);
+    border: 1px solid var(--section-border);
+    border-radius: 8px;
+    padding: 25px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.project:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+
+.project-tech {
+    color: var(--project-stack);
+    font-size: medium;
+    font-weight: 500;
+    font-style:italic;
+    margin-bottom: 15px;
+}
+
+.project a {
+    font-weight: 500;
+}
+
+.project {
+    display: block;
+    color: inherit;
+}
+
+.project:hover {
+    text-decoration: none;
+}
+
+.project h3 {
+    color: var(--titre3);
+}
+/* ======================== Writing section =================== */
+#writing{
+    padding-top: 5%;
+}
+.writing-subhead {
+    margin-top: 30px;
+    margin-bottom: 12px;
+    color: var(----writing-section);
+}
+
+.writing-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.writing-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background-color: var(--section-background);
+    border: 1px solid var(--section-border);
+    font-size: var(--font);
+    border-radius: 6px;
+    color: inherit;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.writing-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.writing-title {
+    font-weight: 500;
+    color: var(--titre3)
+}
+
+.writing-date {
+    color: #7f8c8d;
+    font-size: 0.9rem;
+}
+
+/* ============================= Certifications ===================== */ 
+#certification{
+    padding-top: 5px;
+}
+.certif{
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.certif-item{
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    padding: 15px 20px; 
+    background-color: var(--section-background);
+    border: 1px solid var(--section-border);
+    font-size: var(--font);
+    border-radius: 6px;
+    color: var(--titre3);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.certif-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+/* ============================= Contact ======================= */
+#contact {
+    background-color: var(--section-background);
+    text-align: center;
+}
+
+#contact p {
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+    color: var(--text);
+    font-size: var(--font);
+}
+
+.contact-link {
+    display: inline-block;
+    margin-top: 15px;
+    font-size: 2rem;
+    font-weight: 600;
+}
+
+#contact a{
+    color: var(--email);
+}
+
+/* ========================== Footer ========================= */
+#footer {
+    text-align: center;
+    padding: 25px 20px auto 10px;
+    background-color: var(--background);
+    color: var(--text);
+    position:absolute;
+    bottom:0%;
+    width: 100%;
+    
+}
+
+#footer p {
+    margin: 0;
+    font-size: 0.9rem;
+
+}
+
+
+
+/* ======================= Tools page ======================= */
+.tools-page {
+    padding-top: 120px;
+}
+
+.tool-group {
+    margin-bottom: 50px;
+    scroll-margin-top: 90px;
+}
+
+.tool-group h2 {
+    border-bottom: 2px solid #e0e0e0;
+    padding-bottom: 8px;
+}
+
+
+
+/* ===================== Single project page ================= */
+.project-page {
+    padding-top: 0;
+}
+
+.project-page a{
+    color: var(--titre3);
+    font-size: large;
+}
+
+.btn-pages {
+    display: inline-block;
+    background-color: #c6ca9df5;
+    color: var(--button-text);
+    padding: 12px 30px;
+    margin-top: 25px;
+    margin-left: 42vw;
+    border-radius: 30px;
+    font-weight: 500;
+    transition: background-color 0.3s ease;
+    text-align: center;
+    align-items: center;
+    
+}
+.btn-pages:hover{
+    background-color: #deeae18a;
+}
+
+.back-link {
+    display: inline-block;
+    margin-bottom: 20px;
+    font-weight: 500;
+}
+
+.project-content {
+    margin-top: 20px;
+    text-align: justify;
+}
+
+.project-content p {
+    margin-bottom: 15px;
+}
+
+.project-embed {
+    width: 100%;
+    height: 600px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-top: 20px;
+}
+
+
+
+.highlight {
+    background: #09180c;
+    color: #d4d4d4;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+/* ========= Markdown ============ */
+.highlight .k {
+    color: #569cd6;
+}
+
+
+.highlight .s {
+    color: #ce9178;
+}
+
+
+.highlight .c {
+    color: #6a9955;
+}
+
+
+.highlight .nf {
+    color: #dcdcaa;
+}
+
+
+.highlight .mi {
+    color: #b5cea8;
+}
+
+
+.highlight .nb {
+    color: #4ec9b0;
+}
+
+
+table {
+  display: table !important;
+  width: 100% !important;
+  margin: 20px 0 !important;
+  border-collapse: collapse !important;
+  background-color: #09180c !important;
+  color: #f3fdd2 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  font-family: monospace !important;
+}
+
+table th {
+  background-color: #09180c !important;
+  color: #dbf46e !important;
+  padding: 12px !important;
+  text-align: left !important;
+  border: none !important;
+}
+
+table td {
+  padding: 10px 12px !important;
+  border-top: 1px solid #444 !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-bottom: none !important;
+}
+
+table tr:hover {
+  background-color: #252525 !important;
+}
+
+.img-proj{
+    color: var(--titre2);
+    font-style: italic;
+    margin-top: 10px;
+    justify-items: center;
+
+}
+.img{
+    width: 50%;
+    height: 5%;
+    display: block;
+    margin-bottom: 10px;
+ 
+    
+}
+
+
+/* =================== Writing pages (blog & paper) =================== */
+.writing-page {
+    padding-top: 0px;
+}
+
+.writing-page a{
+    color: var(--titre3)
+}
+
+.writing-meta {
+    color: #7f8c8d;
+    font-size: 0.95rem;
+    margin-bottom: 25px;
+}
+
+.writing-content {
+    margin-bottom: 30px;
+    text-align: justify;
+    font: var(--font);
+}
+
+.writing-content p {
+    margin-bottom: 15px;
+    width: 100%;
+}
+
+
+
+
+
+
+/* ================== Responsive: phones and small screens ==================== */
+@media (max-width: 600px) {
+
+    #navbar {
+        flex-direction: column;
+        gap: 10px;
+        padding-top: 15px;
+    }
+
+    #about{
+        padding-top: 20%;
+    }
+    .nav-links {
+        gap: 15px;
+    }
+
+    body {
+        padding-top: 110px;
+       
+    }
+
+    #landing h1 {
+        font-size: 2.2rem;
+    }
+
+    #landing p {
+        font-size: 1.1rem;
+    }
+
+    section {
+        padding: 10px 20px 10px 15px ;
+       
+    }
+}
