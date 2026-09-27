@@ -1,6 +1,7 @@
 ---
 layout: default
 title: Projects by tool
+permalink : /tools/
 ---
 
 <section class="tools-page">
