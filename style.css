@@ -291,6 +291,18 @@ a {
 .project h3 {
     color: var(--titre3);
 }
+
+.btn_proj{
+    position:relative;
+    padding-bottom : 0px;
+    color: var(--text);
+    text-decoration: underline;
+
+}
+
+.btn_proj:hover{
+    color: var(--titre3);
+}
 /* ======================== Writing section =================== */
 #writing{
     padding-top: 5%;
