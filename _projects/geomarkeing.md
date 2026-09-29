@@ -2,12 +2,12 @@
 layout: project
 title: "Geomarketing with QGIS: Picking a Catchment Area for a New Hardware Store"
 date: 2025-09-24
-tech: Argis, Qgis
-tools: [Argis, Qgis]
+tech: Arcgis, Qgis
+tools: [Arcgis, Qgis]
 
 ---
 
-*A study for a potential hardware store near Saint-Omer: building 10/20/30 km catchment rings, joining socio-demographic data at the commune level, and mapping 47 competitors to assess the site's potential and its risks.*
+A study for a potential hardware store near Saint-Omer: building 10/20/30 km catchment rings, joining socio-demographic data at the commune level, and mapping 47 competitors to assess the site's potential and its risks.
 
 ## Summary
 

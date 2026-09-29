@@ -7,7 +7,7 @@ tools: [Machine learning, Scikit-learn, Git, Numpy, Pandas]
 
 ---
 
-A full MLOps project built on the French national road accident database (BAAC, 2019–2024). The goal is to train a binary severity classifier tracked with MLflow. The final model detects close to 7 severe accidents out of 10 as soon as the accident is reported.
+A full MLOps project tracked with MLflow and built on the French national road accident database.The final model detects close to 7 severe accidents out of 10 as soon as the accident is reported.
 
 
 

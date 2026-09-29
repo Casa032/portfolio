@@ -6,7 +6,7 @@ tech: Sas
 tools: [Sas]
 ---
 
-*Data mining project where we make recommendations based on cross-selling strategies.*
+Data mining project where we make recommendations based on cross-selling strategies.
 
 ## Summary
 
